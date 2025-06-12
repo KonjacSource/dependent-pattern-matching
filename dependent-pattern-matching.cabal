@@ -1,0 +1,146 @@
+cabal-version: 2.2
+
+-- This file has been generated from package.yaml by hpack version 0.36.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           dependent-pattern-matching
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/dependent-pattern-matching#readme>
+homepage:       https://github.com/githubuser/dependent-pattern-matching#readme
+bug-reports:    https://github.com/githubuser/dependent-pattern-matching/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2025 Author name here
+license:        BSD-3-Clause
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/dependent-pattern-matching
+
+library
+  exposed-modules:
+      Context
+      Definition
+      Draft
+      Evaluation
+      FunctionChecker
+      Lib
+      Syntax
+      TypeChecker
+  other-modules:
+      Paths_dependent_pattern_matching
+  autogen-modules:
+      Paths_dependent_pattern_matching
+  hs-source-dirs:
+      src
+  default-extensions:
+      DerivingVia
+      DeriveAnyClass
+      DeriveFunctor
+      DeriveFoldable
+      DeriveTraversable
+      FlexibleContexts
+      GeneralizedNewtypeDeriving
+      LambdaCase
+      OverloadedStrings
+      PatternSynonyms
+      StandaloneDeriving
+      TupleSections
+      ViewPatterns
+      OverloadedRecordDot
+      Strict
+      MultiParamTypeClasses
+      BlockArguments
+      NondecreasingIndentation
+      FunctionalDependencies
+      FlexibleInstances
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-unused-matches
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , mtl
+    , transformers
+  default-language: Haskell2010
+
+executable dependent-pattern-matching-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_dependent_pattern_matching
+  autogen-modules:
+      Paths_dependent_pattern_matching
+  hs-source-dirs:
+      app
+  default-extensions:
+      DerivingVia
+      DeriveAnyClass
+      DeriveFunctor
+      DeriveFoldable
+      DeriveTraversable
+      FlexibleContexts
+      GeneralizedNewtypeDeriving
+      LambdaCase
+      OverloadedStrings
+      PatternSynonyms
+      StandaloneDeriving
+      TupleSections
+      ViewPatterns
+      OverloadedRecordDot
+      Strict
+      MultiParamTypeClasses
+      BlockArguments
+      NondecreasingIndentation
+      FunctionalDependencies
+      FlexibleInstances
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-unused-matches -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , dependent-pattern-matching
+    , mtl
+    , transformers
+  default-language: Haskell2010
+
+test-suite dependent-pattern-matching-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_dependent_pattern_matching
+  autogen-modules:
+      Paths_dependent_pattern_matching
+  hs-source-dirs:
+      test
+  default-extensions:
+      DerivingVia
+      DeriveAnyClass
+      DeriveFunctor
+      DeriveFoldable
+      DeriveTraversable
+      FlexibleContexts
+      GeneralizedNewtypeDeriving
+      LambdaCase
+      OverloadedStrings
+      PatternSynonyms
+      StandaloneDeriving
+      TupleSections
+      ViewPatterns
+      OverloadedRecordDot
+      Strict
+      MultiParamTypeClasses
+      BlockArguments
+      NondecreasingIndentation
+      FunctionalDependencies
+      FlexibleInstances
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-unused-matches -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , dependent-pattern-matching
+    , mtl
+    , transformers
+  default-language: Haskell2010
