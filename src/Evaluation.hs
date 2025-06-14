@@ -9,6 +9,9 @@ import Debug.Trace (trace)
 
 type EvalCtx = (Defs, Env)
 
+evalCtx :: Context -> EvalCtx
+evalCtx ctx = (defs ctx, values ctx)
+
 data MatchResult
   = MatchSuc Env   -- ^ 匹配成功
   | MatchStuck (Either Lvl FuncDef)

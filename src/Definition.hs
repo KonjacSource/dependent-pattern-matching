@@ -28,6 +28,11 @@ data DataDef = DataDef
   -- ^ 构造子的名字, 参数列表, 返回的 Indexes 
   }
 
+dataType :: DataDef -> Type 
+dataType d = go (dataIx d) where 
+  go [] = U 
+  go ((x,t):ts) = Pi x t (go ts)
+
 data Clause = Clause
   { clausePatterns :: [Pattern]
   , clauseRhs :: Term
