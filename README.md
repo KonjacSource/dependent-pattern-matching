@@ -1,6 +1,8 @@
 # dependent-pattern-matching
 
-依赖模式匹配的最简单示例, 简单起见, 不考虑 elaboration. 对项的检查的部分高度参考 elaboration-zoo.
+依赖模式匹配和 Indexed Inductive Types 的最简单示例, 简单起见, 不考虑 elaboration. 对项的检查的部分高度参考 elaboration-zoo.
+包含 elaboration 和终止检查的项目可以看 [ShiTT](https://github.com/KonjacSource/ShiTT).
+
 阅读之前, 读者需要了解以下内容,
 - 基本的依值类型实现 (双向类型检查)
 - 了解 de Bruijn Index 和 Level, 以及基于此的求值
