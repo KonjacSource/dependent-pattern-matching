@@ -5,7 +5,6 @@ import qualified Data.Map as M
 import Syntax
 import Definition
 
-type VType = Value
 data Value 
   = VRig Lvl Spine
   | VLam Name Closure
@@ -15,7 +14,9 @@ data Value
   | VFunc FuncDef Spine
   | VU
 
-data Closure = Closure Env Term
+type VType = Value
+
+data Closure = Closure Env Term 
 
 pattern VVar :: Lvl -> Value
 pattern VVar x = VRig x []
@@ -42,4 +43,31 @@ pushVar x t v (Context vals typs defs) = Context (v:vals) ((x,t):typs) defs
 
 pushVar' :: Name -> VType -> Context -> Context 
 pushVar' x t (Context vals typs defs) = Context (VVar (currentLvl vals):vals) ((x,t):typs) defs
+
+-- pattern to value
+p2v :: Defs -> Lvl -> Pattern -> Value
+p2v defs dep = fst . go1 dep where
+  go1 l = \case 
+    PatVar _ -> (VVar dep, l+1)
+    PatCon c ps -> case M.lookup c defs of 
+      Just (DefCons c) -> 
+        let (l, r) = go dep ps in 
+          (VCons c l, r)
+      _ -> error "impossible"
+  go l [] = ([], l)
+  go l (p:ps) = 
+    let (p', l') = go1 l p 
+        (ps', l'') = go l' ps 
+    in (p':ps', l'')
+
+
+--------
+deriving instance Show ConsDef
+deriving instance Show DataDef
+deriving instance Show FuncDef
+deriving instance Show Clause
+deriving instance Show Pattern
+deriving instance Show Value
+deriving instance Show Closure
+
 

@@ -23,7 +23,7 @@ dependencies:
 - base >= 4.7 && < 5
 - transformers 
 - containers 
-- mtl
+- mtl >= 2.0
 
 ghc-options:
 - -Wall

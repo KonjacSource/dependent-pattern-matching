@@ -5,8 +5,8 @@ import Evaluation
 import Definition 
 import Context
 import qualified Data.Map as M
-
-type TCM = Either String 
+import Printer.ValuePrinter
+import Printer.TermPrinter
 
 infer :: Context -> Raw -> TCM (Term, VType)
 infer ctx = \case 
@@ -46,9 +46,9 @@ infer ctx = \case
     lookupDef f = case M.lookup f (defs ctx) of 
       Nothing -> Left $ "Unknown identifier: " ++ f 
       Just d -> case d of 
-        DefCons c -> pure (Call f, eval (defs ctx, []) (consType c))
-        DefFunc c -> pure (Call f, eval (defs ctx, []) (funcType c))
-        DefData c -> pure (Call f, eval (defs ctx, []) (dataType c))
+        DefCons c -> pure (Call f, eval (evalCtx ctx) (consType c))
+        DefFunc c -> pure (Call f, eval (evalCtx ctx) (funcType c))
+        DefData c -> pure (Call f, eval (evalCtx ctx) (dataType c))
 
 check :: Context -> Raw -> VType -> TCM Term 
 check ctx r t = case (r, t) of 
@@ -67,4 +67,4 @@ check ctx r t = case (r, t) of
     if conv (evalCtx ctx) t' t then 
       pure r'
     else 
-      Left "Type mismatch"
+      Left $ "Type mismatch. \n Expecting: " ++ showVal ctx t ++ "\n Actually: " ++ showVal ctx t' ++ "\n In term: " ++ showTerm ctx r' ++ "\nIn context: " ++ showCtx ctx

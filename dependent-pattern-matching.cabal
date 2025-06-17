@@ -27,11 +27,15 @@ library
   exposed-modules:
       Context
       Definition
+      Don'tWriteParser.Parser
       Draft
       Evaluation
       FunctionChecker
       Lib
+      Printer.TermPrinter
+      Printer.ValuePrinter
       Syntax
+      Tools
       TypeChecker
   other-modules:
       Paths_dependent_pattern_matching
@@ -64,7 +68,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
-    , mtl
+    , mtl >=2.0
     , transformers
   default-language: Haskell2010
 
@@ -102,7 +106,7 @@ executable dependent-pattern-matching-exe
       base >=4.7 && <5
     , containers
     , dependent-pattern-matching
-    , mtl
+    , mtl >=2.0
     , transformers
   default-language: Haskell2010
 
@@ -141,6 +145,6 @@ test-suite dependent-pattern-matching-test
       base >=4.7 && <5
     , containers
     , dependent-pattern-matching
-    , mtl
+    , mtl >=2.0
     , transformers
   default-language: Haskell2010

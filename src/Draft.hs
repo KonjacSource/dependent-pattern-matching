@@ -5,6 +5,7 @@ import Definition
 import Context
 import Evaluation
 import qualified Data.Map as M
+import FunctionChecker
 
 -- Definitions and Context 
 ----------------------------
@@ -41,8 +42,7 @@ sucDef = ConsDef
 addDef :: FuncDef 
 addDef = FuncDef 
   { funcName = "add"
-  , funcArgTypes = [("_", Call "Nat"), ("_", Call "Nat")]
-  , funcType = Call "Nat"
+  , funcType = Pi "_" (Call "Nat") $ Pi "_" (Call "Nat") $ Call "Nat"
   , funcClauses = [
       Clause 
         [PatCon "zero" [], PatVar "n"] (Var 0),
@@ -56,8 +56,57 @@ one = Call "suc" `App` Call "zero"
 two = Call "suc" `App` one
 three = Call "suc" `App` two
 
+{-
+data Id : (A : U) (x y : A) -> U where 
+  | refl : (A : U) (x : A) -> Id A x x
+-}
+
+idDef :: DataDef 
+idDef = DataDef 
+  { dataName = "Id"
+  , dataIx = [("A", U), ("x", Var 0), ("y", Var 1)]
+  , dataCons = [("refl", [("A", U), ("x", Var 0)], [Var 1, Var 0, Var 0])]
+  }
+
+reflDef :: ConsDef
+reflDef = ConsDef
+  { consName = "refl"
+  , consData = idDef
+  , consType = Pi "A" U $ Pi "x" (Var 0) $ Call "Id" `App` Var 1 `App` Var 0 `App` Var 0 
+  }
+
+{-
+sym : (A : U) (x y : A) (_ : Id A x y) -> Id A y x
+sym A x y (refl A' x') = refl A' x'
+-}
+symDefR :: RFuncDef
+symDefR = RFuncDef
+  { funcNameR = "sym"
+  , funcTypeR = RPi "tA" RU $ RPi "tx" (RVar "tA") $ RPi "ty" (RVar "tA") $ 
+      RPi "_" (RVar "Id" `RApp` RVar "tA" `RApp` RVar "tx" `RApp` RVar "ty") $
+      RVar "Id" `RApp` RVar "tA" `RApp` RVar "ty" `RApp` RVar "tx"
+  , funcClausesR = 
+    [ RClause 
+      { clausePatternsR = [PatVar "A", PatVar "x", PatVar "y", PatCon "refl" [PatVar "A'", PatVar "x'"]] 
+      , clauseRhsR = RVar "refl" `RApp` RVar "A" `RApp` RVar "x"
+      }
+    ] 
+  }
+
+symDef :: FuncDef
+symDef = case checkFunc (Context [] [] testDefs) symDefR of 
+  Right f -> f 
+  Left m -> error m
+
 testDefs :: Defs
-testDefs = M.fromList [("Nat", DefData natDef), ("zero", DefCons zeroDef), ("suc", DefCons sucDef), ("add", DefFunc addDef)]
+testDefs = M.fromList 
+  [ ("Nat", DefData natDef)
+  , ("zero", DefCons zeroDef)
+  , ("suc", DefCons sucDef)
+  , ("add", DefFunc addDef) 
+  , ("Id", DefData idDef)
+  , ("refl", DefCons reflDef)
+  ]
 
 
 -- Evaluator

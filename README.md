@@ -17,7 +17,7 @@
 - Context [Done]
   * 各种语境相关定义与工具
 - Evaluation [Done]
-  * 求值器, 基于 NBE
+  * 支持模式匹配的求值器, 基于 NBE.
 - TypeChecker [Done]
   * 项的双向类型检查, 没写 elaborator
 - FunctionChecker [TODO]

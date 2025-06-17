@@ -6,6 +6,8 @@ import Context
 import Definition
 import qualified Data.Map as M
 import Debug.Trace (trace)
+import Data.List (nub)
+import GHC.Stack (HasCallStack)
 
 type EvalCtx = (Defs, Env)
 
@@ -53,9 +55,12 @@ evalFun ctx@(def, env) f (c:cs) sp
         MatchStuck _ -> VFunc f sp       -- Stucked
         MatchSuc env' -> eval (def, env') (clauseRhs c) -- Succeeded
 
-eval :: EvalCtx -> Term -> Value
+-- 这个模块最重要的函数
+eval :: HasCallStack => EvalCtx -> Term -> Value
 eval ctx@(def, env) = \case
-  Var (Ix ix) -> env !! ix
+  Var ix 
+    | ix >= 0 -> env !! ix
+    | otherwise -> error $ "looking for " ++ show ix ++ " in " ++ show env
   Lam x tm -> VLam x (Closure env tm)
   Pi x (eval ctx -> ty) tm -> VPi x ty (Closure env tm)
   Let x ty (eval ctx -> tm) rhs -> eval (def, tm:env) rhs
@@ -87,7 +92,6 @@ app ctx@(def, env) f a = case f of
   VPi {} -> error "app: impossible"
   VU -> error "app: impossible"
 
-
 appSp :: EvalCtx -> Value -> Spine -> Value
 appSp ctx f [] = f
 appSp ctx f (a:as) = appSp ctx (app ctx f a) as
@@ -113,7 +117,7 @@ quoteSp def l tm (a:as) = quoteSp def l (App tm (quote def l a)) as
     [dep = 0] (λ. [dep = 1] (λ. [dep = 2] 0 1) 0)
 -}
 toIx :: Lvl -> Lvl -> Ix
-toIx (Lvl dep) (Lvl lv) = Ix (dep - lv - 1)
+toIx (Lvl dep) (Lvl lv) = dep - lv - 1
 
 quote :: Defs -> Lvl -> Value -> Term
 quote def dep = \case
@@ -135,7 +139,7 @@ normalForm ctx@(def, env) t = quote def (currentLvl env) (eval ctx t)
 
 convSp :: EvalCtx  -> Spine -> Spine -> Bool
 convSp ctx [] [] = True
-convSp ctx (a:as) (b:bs) = conv ctx a b && convSp ctx as bs 
+convSp ctx (a:as) (b:bs) = conv ctx a b && convSp ctx as bs
 convSp _ _ _ = False
 
 -- Judgmental Equality.
@@ -150,14 +154,31 @@ conv ctx@(def, env) a b = case (a, b) of
     (VLam _ a, b) -> conv (def, VVar dep : env) (evalClosure def a (VVar dep)) (app ctx b (VVar dep))
     (b, VLam _ a) -> conv (def, VVar dep : env) (evalClosure def a (VVar dep)) (app ctx b (VVar dep))
 
-    (VU, VU) -> True 
+    (VU, VU) -> True
     (VFunc f sp, VFunc f' sp')
       | funcName f == funcName f' -> convSp ctx sp sp'
     (VData d sp, VData d' sp')
       | dataName d == dataName d' -> convSp ctx sp sp'
     (VCons c sp, VCons c' sp')
       | consName c == consName c' -> convSp ctx sp sp'
-    
-    _ -> False 
+
+    _ -> False
   where dep = currentLvl env
-      
+
+
+fvSp :: Defs -> Lvl -> Spine -> [Lvl]
+fvSp def dep = \case 
+  [] -> []
+  (v:vs) -> fv def dep v ++ fvSp def dep vs
+
+fv :: Defs -> Lvl -> Value -> [Lvl]
+fv def dep = nub . \case
+  VRig l sp -> l : fvSp def dep sp
+  VLam x b -> filter (< dep) $ fv def (dep + 1) (evalClosure def b (VVar dep))
+  VPi x t b -> fv def dep t ++ filter (< dep) (fv def (dep + 1) (evalClosure def b (VVar dep)))
+  VCons _ sp -> fvSp def dep sp 
+  VFunc _ sp -> fvSp def dep sp 
+  VData _ sp -> fvSp def dep sp 
+  VU -> []
+
+

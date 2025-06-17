@@ -1,8 +1,8 @@
 module Syntax where 
 
 -- De Bruijn index and level.
-newtype Ix  = Ix  Int deriving (Eq, Show, Num) via Int
-newtype Lvl = Lvl Int deriving (Eq, Show, Num) via Int
+type Ix = Int
+newtype Lvl = Lvl Int deriving (Eq, Show, Num, Ord) via Int
 
 -- 局部变量名
 type Name = String 
@@ -26,7 +26,6 @@ data Term
   -- ^ Test 
   deriving Show
 
-infixl 7 `App`
 
 -- 列表中处于后部的类型居于前面构成的语境中.
 type Telescope = [(Name, Type)]
@@ -42,6 +41,12 @@ data Raw
   -- ^ evaluate 时输出
   | RPrintCtx Raw
   -- ^ 类型检查时输出
+  
+infixl 7 `App`
+infixl 7 `RApp`
+
+type TCM = Either String 
 
 sorry :: a
 sorry = undefined
+
