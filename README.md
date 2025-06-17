@@ -9,7 +9,7 @@
 - 基本 Haskell 语法
 - 对依赖模式匹配有基本的直觉 (或者你熟悉 GADT 也行)
 
-阅读顺序, 同时也是依赖顺序:
+阅读顺序:
 - Syntax [Done]
   * 基本语法, 项的定义
 - Definition [Done]
@@ -21,8 +21,10 @@
 - TypeChecker [Done]
   * 项的双向类型检查, 没写 elaborator
 - FunctionChecker [TODO]
-  * 检查函数, 这是本项目的关键
-- PrettyPrinter [TODO]
+  * 检查函数 [Done]
+  * 模式完全性检查 [TODO]
+
+- Printer [Done]
 - Parser [TODO]
 
 有一篇写的很烂的[文章](design_proof_assistant_net.pdf).
