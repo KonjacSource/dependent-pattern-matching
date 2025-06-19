@@ -26,3 +26,70 @@
   * 模式完全性检查 [Todo]
 
 有一篇写的很烂的[文章](design_proof_assistant_net.pdf).
+
+## Example
+
+```haskell
+{-# LANGUAGE NoImplicitPrelude #-} 
+import Prelude hiding ((/))
+import Syntax 
+import Definition
+import Context
+import Evaluation
+import qualified Data.Map as M
+import Don'tWriteParser.Parser 
+import ProgramChecker
+
+testProg = checkProg M.empty $(parseProg =<< [|
+    datatype Id : (A : U) (x : A) (y : A) --> U 
+    / refl : (A : U) (x : A) --> Id A x x 
+
+    $
+    
+    def cong : (A : U) (B : U) (x : A) (y : A) (f : A --> B) --> Id A x y --> Id B (f x) (f y) 
+    / A . B . x . y . f . (refl A1 x1) := refl B (f y)
+
+    $
+
+    def sym : (A : U) (x : A) (y : A) --> Id A x y --> Id A y x 
+    / A . x . y . (refl A1 x1) := refl A1 x1
+
+    $
+
+    def trans : (A : U) (x : A) (y : A) (z : A) --> Id A x y --> Id A y z --> Id A x z
+    / A . x . y . z . (refl A1 x1) . (refl A2 y1) := refl A2 y1 
+
+    $
+
+    datatype Nat : U
+    / zero : Nat
+    / suc : (_ : Nat) --> Nat
+
+    $
+
+    def add : (_ : Nat) (_ : Nat) --> Nat
+    / zero . n := n
+    / suc m . n := suc (add m n)
+
+    $
+
+    def addIdR : (n : Nat) --> Id Nat n (add n zero)
+    / zero := refl Nat zero
+    / suc m := cong Nat Nat m (add m zero) suc (addIdR m)
+    
+    $
+
+    def addSuc : (n : Nat) (m : Nat) --> Id Nat (add n (suc m)) (suc (add n m))
+    / zero . m := refl Nat (suc m)
+    / suc n . m := cong Nat Nat (add n (suc m)) (suc (add n m)) suc (addSuc n m)
+    
+    $
+
+    def addCom : (n : Nat) (m : Nat) --> Id Nat (add n m) (add m n)
+    / zero . m := addIdR m
+    / suc n . m := 
+        trans Nat (suc (add n m)) (suc (add m n)) (add m (suc n)) 
+          (cong Nat Nat (add n m) (add m n) suc (addCom n m)) 
+          (sym Nat (add m (suc n)) (suc (add m n)) (addSuc m n))
+  |])
+```

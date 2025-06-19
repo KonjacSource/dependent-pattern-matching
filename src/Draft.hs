@@ -164,7 +164,7 @@ testProg = $(parseProg =<< [|
     def addSuc : (n : Nat) (m : Nat) --> Id Nat (add n (suc m)) (suc (add n m))
     / zero . m := refl Nat (suc m)
     / suc n . m := cong Nat Nat (add n (suc m)) (suc (add n m)) suc (addSuc n m)
-    
+
     $
 
     def addCom : (n : Nat) (m : Nat) --> Id Nat (add n m) (add m n)
@@ -174,14 +174,6 @@ testProg = $(parseProg =<< [|
           (cong Nat Nat (add n m) (add m n) suc (addCom n m)) 
           (sym Nat (add m (suc n)) (suc (add m n)) (addSuc m n))
   |])
-
-addDefR :: RFuncDef
-addDefR = $(parseFunc =<< [|
-    def addIdR : (n : Nat) --> Id Nat n (add n zero)
-    / zero := refl Nat zero
-    / suc m := cong Nat Nat m (add m zero) suc (addIdR m)
-  |])
-
 
 testDefs' :: TCM Defs
 testDefs' = checkProg M.empty testProg
