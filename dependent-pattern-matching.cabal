@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Context
+      DataChecker
       Definition
       Don'tWriteParser.Parser
       Don'tWriteParser.Test
@@ -35,6 +36,7 @@ library
       Lib
       Printer.TermPrinter
       Printer.ValuePrinter
+      ProgramChecker
       Syntax
       Tools
       TypeChecker

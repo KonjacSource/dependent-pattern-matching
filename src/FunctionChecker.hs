@@ -114,6 +114,7 @@ updateCtx ctx x v =
     env1 = postenv ++ v : prenv 
 
     -- 用上面那个语境去更新能被他影响到的语境.
+    -- TODO : 这里只更改了后方的语境, 但实际上前方的语境也可能被影响, 所以这里需要对语境整体进行刷新
     refresh es tys []     [] = (es, tys)
     refresh es tys (v:vs) ((x,t):ts) =
       -- trace "---------------------------------------------------------------------" $
@@ -122,7 +123,7 @@ updateCtx ctx x v =
       refresh (eval (def, env1) (quote def (currentLvl env) v):es) 
               ((x, eval (def, env1) (quote def (currentLvl env) t)):tys) 
               vs ts
-    refresh _ _ _ _ = error "impossible"
+    refresh _ _ _ _ = error "refresh: impossible"
 
     (env', typ') = refresh (v:prenv) (xty:pretyp) (reverse postenv) (reverse postyp)
 
@@ -144,12 +145,26 @@ checkPat ctx (p:ps) (VPi x' a b) =
         (ctx', c_ty') <- checkPat ctx c_arg c_ty
         d_arg' <- case c_ty' of 
           VData _ x -> pure x 
-          _ -> Left "impossible"
+          e -> Left $ "checkPat: impossible, expected a data type: " ++ showVal ctx e
         let d_type = eval (evalCtx ctx') (dataType d)
         -- trace ("Starting unification: " ++ ctxShow ctx' d_arg ++ " with " ++ ctxShow ctx' d_arg' ++ " against: " ++ ctxShow ctx' d_type) $ pure ()
         ctx'' <- unifySp ctx' (fvSp (defs ctx') (currentLvl (values ctx')) d_arg) d_arg d_arg' d_type 
-        let b_rest = evalClosure (defs ctx'') b (p2v (defs ctx'') (currentLvl (values ctx')) p)
+        -- b_rest is using an old context in its closure, so we need to update it.
+        -- So we have to refresh the context.
+        -- Note. Here p2v start from the level of ctx, not ctx''.
+        let patVal = p2v (defs ctx'') (currentLvl (values ctx)) p
+        let patVal' = eval (evalCtx ctx'') (quote (defs ctx'') (currentLvl (values ctx'')) patVal)
+        let b_rest = evalClosure (defs ctx'') b patVal'
+        -- trace ("context = " ++ showCtx ctx'') $ pure ()
+        -- trace ("pattern = " ++ show p) $ pure ()
+        -- trace ("p2v = " ++ show (p2v (defs ctx'') (currentLvl (values ctx)) p) ++ "\n\n") $ pure ()
         let b_rest_updated = eval (evalCtx ctx'') (quote (defs ctx'') (currentLvl (values ctx'')) b_rest)
+
+        ------------------------------------------------------
+        -- let Closure _ body = b
+        -- let b_rest = eval (defs ctx'', p2v (defs ctx'') (currentLvl (values ctx')) p : values ctx'') body
+        ------------------------------------------------------
+
         -- trace ("rest_type = " ++ showVal ctx'' b_rest_updated) $ pure ()
         checkPat ctx'' ps b_rest_updated 
       _ -> Left "Try to eliminate a nondatatype with constructor."
@@ -179,6 +194,7 @@ checkCls ctx func_name func_typ (RClause (map (elabPattern (defs ctx)) -> ps) rh
 checkFunc1 :: Context -> RFuncDef -> TCM FuncDef
 checkFunc1 ctx (RFuncDef func_name func_typ cls) = do 
   func_typ' <- check ctx func_typ VU
+  -- trace ("Checking function: " ++ func_name ++ " with type: " ++ showTerm ctx func_typ') $ pure ()
   let go = \case 
         [] -> pure [] 
         (rcls : rrest) -> do 
@@ -187,6 +203,9 @@ checkFunc1 ctx (RFuncDef func_name func_typ cls) = do
           pure $ cls : rest
   cls' <- go cls
   pure $ FuncDef func_name func_typ' cls'
+
+insertFunc :: Defs -> FuncDef -> Defs
+insertFunc defs func = M.insert (funcName func) (DefFunc func) defs
 
 checkFunc ::  Context -> RFuncDef -> TCM FuncDef
 checkFunc ctx rfun = do 

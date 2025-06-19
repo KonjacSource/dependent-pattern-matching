@@ -12,6 +12,7 @@ import Evaluation
 import qualified Data.Map as M
 import FunctionChecker
 import Don'tWriteParser.Parser 
+import ProgramChecker
 
 
 -- Definitions and Context 
@@ -108,12 +109,82 @@ symDef = case checkFunc (Context [] [] testDefs) symDefR of
 congDefR :: RFuncDef
 congDefR = $(parseFunc =<< [| 
     def cong : (A : U) (B : U) (x : A) (y : A) (f : A --> B) (_ : Id A x y) --> Id B (f x) (f y) 
-    / A B x y f (refl A x1) := refl B (f y)
+    / A . B . x . y . f . (refl A x1) := refl B (f y)
   |])
 
 congDef = case checkFunc (Context [] [] testDefs) congDefR of 
   Right f -> f 
   Left m -> error m 
+
+idDefR = $(parseData =<< [|
+    datatype Id : (A : U) (x : A) (y : A) --> U 
+    / refl : (A : U) (x : A) --> Id A x x 
+  |])
+
+testProg :: Program
+testProg = $(parseProg =<< [|
+    datatype Id : (A : U) (x : A) (y : A) --> U 
+    / refl : (A : U) (x : A) --> Id A x x 
+
+    $
+    
+    def cong : (A : U) (B : U) (x : A) (y : A) (f : A --> B) --> Id A x y --> Id B (f x) (f y) 
+    / A . B . x . y . f . (refl A1 x1) := refl B (f y)
+
+    $
+
+    def sym : (A : U) (x : A) (y : A) --> Id A x y --> Id A y x 
+    / A . x . y . (refl A1 x1) := refl A1 x1
+
+    $
+
+    def trans : (A : U) (x : A) (y : A) (z : A) --> Id A x y --> Id A y z --> Id A x z
+    / A . x . y . z . (refl A1 x1) . (refl A2 y1) := refl A2 y1 
+
+    $
+
+    datatype Nat : U
+    / zero : Nat
+    / suc : (_ : Nat) --> Nat
+
+    $
+
+    def add : (_ : Nat) (_ : Nat) --> Nat
+    / zero . n := n
+    / suc m . n := suc (add m n)
+
+    $
+
+    def addIdR : (n : Nat) --> Id Nat n (add n zero)
+    / zero := refl Nat zero
+    / suc m := cong Nat Nat m (add m zero) suc (addIdR m)
+    
+    $
+
+    def addSuc : (n : Nat) (m : Nat) --> Id Nat (add n (suc m)) (suc (add n m))
+    / zero . m := refl Nat (suc m)
+    / suc n . m := cong Nat Nat (add n (suc m)) (suc (add n m)) suc (addSuc n m)
+    
+    $
+
+    def addCom : (n : Nat) (m : Nat) --> Id Nat (add n m) (add m n)
+    / zero . m := addIdR m
+    / suc n . m := 
+        trans Nat (suc (add n m)) (suc (add m n)) (add m (suc n)) 
+          (cong Nat Nat (add n m) (add m n) suc (addCom n m)) 
+          (sym Nat (add m (suc n)) (suc (add m n)) (addSuc m n))
+  |])
+
+addDefR :: RFuncDef
+addDefR = $(parseFunc =<< [|
+    def addIdR : (n : Nat) --> Id Nat n (add n zero)
+    / zero := refl Nat zero
+    / suc m := cong Nat Nat m (add m zero) suc (addIdR m)
+  |])
+
+
+testDefs' :: TCM Defs
+testDefs' = checkProg M.empty testProg
 
 testDefs :: Defs
 testDefs = M.fromList 

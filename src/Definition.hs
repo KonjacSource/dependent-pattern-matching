@@ -83,7 +83,7 @@ type RTelescope = [(Name, Raw)]
 data RDataDef = RDataDef
   { dataNameR :: Name
   , dataIxR :: RTelescope
-  , dataConsR :: [(Name, Telescope, [Raw])]
+  , dataConsR :: [(Name, RTelescope, [Raw])]
   } deriving Show 
 
 data RDef = RDefData RDataDef | RDefFunc RFuncDef

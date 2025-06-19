@@ -11,6 +11,7 @@ import Language.Haskell.TH.Syntax (Lift(..))
 import Syntax (Raw (..)) 
 import qualified Syntax as S
 import Definition 
+import Control.Monad (forM)
 
 {-
 == Syntax
@@ -72,8 +73,6 @@ infixr 6 -->
 (-->) = undefined
 data Won'tBeMultiDefined_114514 = (:=)
 
-
-
 -- term ::= 
 --   | x                             -- Variable
 --   | term term                     -- Application 
@@ -83,11 +82,12 @@ data Won'tBeMultiDefined_114514 = (:=)
 --   | term => term                  -- Function
 --   | U                             -- Universe
 
--- | TODO change type to :: Exp -> Maybe Raw
+printContext = undefined
+
 parseRaw' :: Exp -> Q Exp 
 parseRaw' e = case e of
   VarE (nameBase -> x) ->
-    [| RVar x |]
+      [| RVar x |]
   UnboundVarE (nameBase -> x) 
     | x == "U" -> [| RU |]
     | otherwise -> [| RVar x |]
@@ -120,6 +120,8 @@ parseRaw' e = case e of
         go ((x, t):xs) b = go xs [| RPi x $t $b|] 
       Nothing ->
         let a' = parseRaw' a in [| RPi "_" $a' $b|]
+  (DoE Nothing [NoBindS e]) -> 
+    [| RPrintCtx $(parseRaw' e) |]
   _ -> let s = show e in [|s|]
 
 parseId :: Exp -> Maybe String 
@@ -172,10 +174,9 @@ parsePattern1 (flattenApp -> c:sp) = do
   pure $ RPat c' sp'
 
 parsePatterns :: Exp -> Q [RPattern]
-parsePatterns (flattenApp -> ps) = case mapM parsePattern1 ps of 
+parsePatterns (sliceSymbolR "." -> ps) = case mapM parsePattern1 ps of 
   Just ps -> pure ps 
   _ -> error $ "parse error in " ++ show ps
-  
 
 parseFunc' :: Exp -> Q (Maybe (String, Exp, [([RPattern], Exp)])) -- ^ Id, Type, Clauses
 parseFunc' = \case 
@@ -242,3 +243,116 @@ parseFunc e = do
   case e' of 
     Nothing -> error "parse error."
     Just e' -> makeFunc e'
+
+datatype = undefined
+
+sliceSymbolR :: String -> Exp -> [Exp]
+sliceSymbolR s = \case 
+  (InfixE (Just this) (VarE (nameBase -> i)) (Just rest)) | i == s -> 
+    this : sliceSymbolR s rest 
+  e -> [e]
+
+type RRTelescope = [(String, Exp)]
+
+-- datatype data_id : telescope --> U   
+-- / con_id : telescope --> data_id spine
+-- / con_id : telescope --> data_id spine
+
+parseData' :: Exp -> Q (Maybe (String, RRTelescope, [(String, RRTelescope, [Exp])]))
+parseData' (sliceSymbolR "/" -> (header:cons)) = do 
+    header <- do_header header 
+    case header of 
+      Nothing -> error "1" -- pure Nothing 
+      Just (data_id, ts) -> do 
+        cons <- mapM (do_cons data_id) cons 
+        pure $ Just (data_id, ts, cons)
+  where
+    do_header = \case 
+      (InfixE (Just (AppE (VarE (nameBase -> key_data)) data_id)) (parseId -> Just i) (Just (InfixE (Just ts) (VarE (nameBase -> arr)) (Just (ConE (nameBase -> u)))))) 
+        | i == ":" && arr == "-->" && u == "U" && key_data == "datatype" -> do 
+          data_id <- case parseId data_id of 
+              Just id -> pure id 
+              _ -> error "expecting identifier."
+          (Just (reverse -> ts)) <- parseReversedTelescope ts
+          ts <- forM ts \ (n, q) -> do 
+                  q <- q 
+                  pure (n, q)
+          pure $ Just (data_id, ts)
+      (InfixE (Just (AppE (VarE (nameBase -> key_data)) data_id)) (parseId -> Just i) (Just (ConE (nameBase -> u))))
+        | i == ":" && u == "U" && key_data == "datatype" -> do 
+          data_id <- case parseId data_id of 
+              Just id -> pure id 
+              _ -> error "expecting identifier."
+          pure $ Just (data_id, [])
+      e -> error $ show e ++ "\n" -- pure Nothing
+    -- con_id : telescope --> data_id spine
+    do_cons :: String -> Exp -> Q (String, RRTelescope, [Exp])
+    do_cons data_id = \case 
+      (InfixE (Just (parseId -> Just cons_id)) (ConE (nameBase -> i)) (Just (InfixE (Just ts) (VarE (nameBase -> arr)) (Just ret_msg))))
+        | i == ":" && arr == "-->" -> do 
+          (Just (reverse -> ts)) <- parseReversedTelescope ts
+          ts <- forM ts \ (n, q) -> do 
+                  q <- q 
+                  pure (n, q)
+          let d:sp = flattenApp ret_msg
+          if parseId d == Just data_id then do
+            sp <- mapM parseRaw' sp
+            pure (cons_id, ts, sp)
+          else 
+            error "constructor must return the defining datatype"
+      (InfixE (Just (parseId -> Just cons_id)) (ConE (nameBase -> i)) (Just ret_msg))
+        | i == ":" -> do 
+          let d:sp = flattenApp ret_msg
+          if parseId d == Just data_id then do
+            sp <- mapM parseRaw' sp
+            pure (cons_id, [], sp)
+          else 
+            error "constructor must return the defining datatype"
+      e -> error $ "expecting constructor definition in: " ++ show e
+
+mkData :: (String, RRTelescope, [(String, RRTelescope, [Exp])]) -> Q Exp 
+mkData (data_id, ts, cons) = 
+  [|
+    RDataDef data_id $(do_ts ts) $(do_cons cons)
+  |]
+  where 
+    do_ts :: RRTelescope -> Q Exp 
+    do_ts = \case 
+      [] -> [| [] |] 
+      (x, pure -> t) : ts -> [| (x, $t) : $(do_ts ts) |]
+    do_sp :: [Exp] -> Q Exp 
+    do_sp = \case 
+      [] -> [| [] |]
+      (pure -> x):xs -> [| $x : $(do_sp xs)|]
+    do_cons :: [(String, RRTelescope, [Exp])] -> Q Exp
+    do_cons = \case 
+      [] -> [| [] |]
+      (cons_id, ts, sp):rest -> 
+        [|
+          (cons_id, $(do_ts ts), $(do_sp sp)) : $(do_cons rest)
+        |]
+
+parseData :: Exp -> Q Exp 
+parseData e = do 
+  d <- parseData' e 
+  case d of 
+    Just d -> mkData d 
+    Nothing -> error $ "expecting data def: " ++ show e 
+
+parseDef :: Exp -> Q Exp 
+parseDef e = do 
+  e' <- parseFunc' e 
+  case e' of 
+    Just e ->
+      [| RDefFunc $(makeFunc e) |]
+    Nothing -> do 
+      e' <- parseData' e 
+      case e' of 
+        Just e -> 
+          [| RDefData $(mkData e) |]
+        Nothing -> error "expecting definition."
+
+parseProg :: Exp -> Q Exp 
+parseProg (sliceSymbolR "$" -> e) = go e where 
+  go [] = [| [] |]
+  go (d:rest) = [| $(parseDef d) : $(go rest) |]

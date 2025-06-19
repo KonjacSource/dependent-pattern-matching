@@ -34,6 +34,7 @@ match1 ctx@(def, env) pat val = case (pat, val) of
   (PatCon _ _, VPi {}) -> MatchFailed
   (PatCon _ _, VRig x _) -> MatchStuck (Left x)
   (PatCon _ _, VFunc f _) -> MatchStuck (Right f)
+  (PatCon _ _, VHold f _) -> MatchStuck (Right f)
 
 match :: EvalCtx -> [Pattern] -> Spine -> MatchResult
 match (_, env) [] [] = MatchSuc env
@@ -42,11 +43,11 @@ match ctx@(def, env) (p:ps) (a:as) =
     MatchFailed -> MatchFailed
     MatchStuck l -> MatchStuck l
     MatchSuc env' -> match (def, env') ps as
-match _ _ _ = error "impossible"
+match _ _ _ = error "match: impossible"
 
 -- | Make sure `(length sp) <= arity f`
-evalFun :: EvalCtx -> FuncDef -> [Clause] -> Spine -> Value
-evalFun ctx@(def, env) f [] sp = VFunc f sp -- No matchable clause yet.
+evalFun :: HasCallStack => EvalCtx -> FuncDef -> [Clause] -> Spine -> Value
+evalFun ctx@(def, env) f [] sp = VHold f sp -- No matchable clause yet.
 evalFun ctx@(def, env) f (c:cs) sp
   | length sp < arity f = VFunc f sp -- Wait
   | otherwise = -- `length sp == arity f`
@@ -57,35 +58,38 @@ evalFun ctx@(def, env) f (c:cs) sp
 
 -- 这个模块最重要的函数
 eval :: HasCallStack => EvalCtx -> Term -> Value
-eval ctx@(def, env) = \case
-  Var ix 
-    | ix >= 0 -> env !! ix
-    | otherwise -> error $ "looking for " ++ show ix ++ " in " ++ show env
-  Lam x tm -> VLam x (Closure env tm)
-  Pi x (eval ctx -> ty) tm -> VPi x ty (Closure env tm)
-  Let x ty (eval ctx -> tm) rhs -> eval (def, tm:env) rhs
-  Call f -> case M.lookup f def of
-    Just (DefFunc f) -> VFunc f []
-    Just (DefData d) -> VData d []
-    Just (DefCons c) -> VCons c []
-    Nothing -> error "eval: impossible"
-  App (eval ctx -> f) (eval ctx -> a) -> app ctx f a
-  PrintEnv t ->
-    trace (show (quoteEnv def env)) $
-    eval ctx t
-  U -> VU
+eval ctx@(def, env) e = -- trace ("eval: " ++ show e) $
+  case e of
+    Var ix 
+      | ix >= 0 -> env !! ix
+      | otherwise -> error $ "looking for " ++ show ix ++ " in " ++ show env
+    Lam x tm -> VLam x (Closure env tm)
+    Pi x (eval ctx -> ty) tm -> VPi x ty (Closure env tm)
+    Let x ty (eval ctx -> tm) rhs -> eval (def, tm:env) rhs
+    Call f -> case M.lookup f def of
+      Just (DefFunc f) -> VFunc f []
+      Just (DefData d) -> VData d []
+      Just (DefCons c) -> VCons c []
+      Nothing -> error "eval: impossible"
+    App (eval ctx -> f) (eval ctx -> a) -> app ctx f a
+    PrintEnv t ->
+      trace (show (quoteEnv def env)) $
+      eval ctx t
+    U -> VU
 
 quoteEnv :: Defs -> Env -> [Term]
 quoteEnv _ [] = []
 quoteEnv def (v:vs) = quote def (currentLvl vs) v : quoteEnv def vs
 
-app :: EvalCtx -> Value -> Value -> Value
+app :: HasCallStack => EvalCtx -> Value -> Value -> Value
 app ctx@(def, env) f a = case f of
   VLam x clo -> evalClosure def clo a
+  -- TODO : Here has infinite loop risk. I avoid this by introducing `VHold`. But this is not a good solution.
   VFunc f sp
     | length (sp ++ [a]) < arity f -> evalFun ctx f (funcClauses f) (sp ++ [a])
     | otherwise -> let (sp', rest) = splitAt (arity f) (sp ++ [a]) in
         appSp ctx (evalFun ctx f (funcClauses f) sp') rest
+  VHold f sp -> VHold f (sp ++ [a])
   VCons c sp -> VCons c (sp ++ [a])
   VData d sp -> VData d (sp ++ [a])
   VRig x sp -> VRig x (sp ++ [a])
@@ -96,7 +100,7 @@ appSp :: EvalCtx -> Value -> Spine -> Value
 appSp ctx f [] = f
 appSp ctx f (a:as) = appSp ctx (app ctx f a) as
 
-quoteSp :: Defs -> Lvl -> Term -> Spine -> Term
+quoteSp :: HasCallStack => Defs -> Lvl -> Term -> Spine -> Term
 quoteSp def l tm [] = tm
 quoteSp def l tm (a:as) = quoteSp def l (App tm (quote def l a)) as
 
@@ -116,10 +120,10 @@ quoteSp def l tm (a:as) = quoteSp def l (App tm (quote def l a)) as
   所以我们需要在 `quote` 参数中记录当前语境的深度, 即, 最近绑定的 Level 的数值加一.
     [dep = 0] (λ. [dep = 1] (λ. [dep = 2] 0 1) 0)
 -}
-toIx :: Lvl -> Lvl -> Ix
-toIx (Lvl dep) (Lvl lv) = dep - lv - 1
+toIx :: HasCallStack => Lvl -> Lvl -> Ix
+toIx (Lvl dep) (Lvl lv) = dep - lv - 1 
 
-quote :: Defs -> Lvl -> Value -> Term
+quote :: HasCallStack => Defs -> Lvl -> Value -> Term
 quote def dep = \case
   VRig lv sp -> quoteSp def dep (Var (toIx dep lv)) sp
   VLam x clo -> Lam x
@@ -128,6 +132,7 @@ quote def dep = \case
     (quote def (dep + 1) (evalClosure def clo (VVar dep)))
   VCons c sp -> quoteSp def dep (Call (consName c)) sp
   VFunc f sp -> quoteSp def dep (Call (funcName f)) sp
+  VHold f sp -> quoteSp def dep (Call (funcName f)) sp
   VData d sp -> quoteSp def dep (Call (dataName d)) sp
   VU -> U
 
@@ -178,6 +183,7 @@ fv def dep = nub . \case
   VPi x t b -> fv def dep t ++ filter (< dep) (fv def (dep + 1) (evalClosure def b (VVar dep)))
   VCons _ sp -> fvSp def dep sp 
   VFunc _ sp -> fvSp def dep sp 
+  VHold _ sp -> fvSp def dep sp 
   VData _ sp -> fvSp def dep sp 
   VU -> []
 

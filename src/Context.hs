@@ -12,6 +12,7 @@ data Value
   | VCons ConsDef Spine
   | VData DataDef Spine
   | VFunc FuncDef Spine
+  | VHold FuncDef Spine
   | VU
 
 type VType = Value
@@ -48,12 +49,12 @@ pushVar' x t (Context vals typs defs) = Context (VVar (currentLvl vals):vals) ((
 p2v :: Defs -> Lvl -> Pattern -> Value
 p2v defs dep = fst . go1 dep where
   go1 l = \case 
-    PatVar _ -> (VVar dep, l+1)
+    PatVar _ -> (VVar l, l+1)
     PatCon c ps -> case M.lookup c defs of 
       Just (DefCons c) -> 
-        let (l, r) = go dep ps in 
-          (VCons c l, r)
-      _ -> error "impossible"
+        let (l', r) = go l ps in 
+          (VCons c l', r)
+      _ -> error "p2v: impossible"
   go l [] = ([], l)
   go l (p:ps) = 
     let (p', l') = go1 l p 
@@ -68,8 +69,10 @@ deriving instance Show FuncDef
 deriving instance Show Clause
 deriving instance Show Pattern
 deriving instance Show Value
-deriving instance Show Closure
+instance Show Closure where 
+  show _ = "<closure>"
 deriving instance Show RFuncDef
 deriving instance Show RClause
 deriving instance Show RPattern
+deriving instance Show Def
 

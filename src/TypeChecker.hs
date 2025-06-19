@@ -7,9 +7,11 @@ import Context
 import qualified Data.Map as M
 import Printer.ValuePrinter
 import Printer.TermPrinter
+import Debug.Trace
 
 infer :: Context -> Raw -> TCM (Term, VType)
-infer ctx = \case 
+infer ctx r = -- trace ("infer: " ++ show r) $ 
+  case r of
     RVar x -> do 
       let go i = \case 
             [] -> lookupDef x 
@@ -38,7 +40,7 @@ infer ctx = \case
       let vv = eval (evalCtx ctx) v'
       (e', et) <- infer (pushVar x vt vv ctx) e
       pure (Let x t' v' e', et)
-    RPrintCtx e -> infer ctx e -- TODO
+    RPrintCtx e -> trace (showCtx ctx) $ infer ctx e 
     RPrintEnv e -> do 
       (e', et) <- infer ctx e 
       pure (PrintEnv e', et)
@@ -62,9 +64,20 @@ check ctx r t = case (r, t) of
     let vv = eval (evalCtx ctx) v'
     e' <- check (pushVar x vt vv ctx) e et -- No need to move indexes in `et`, since we are using de Bruijn level here
     pure (Let x t' v' e')
+  (RPrintCtx e, et) -> do 
+    trace (showCtx ctx ++ "\n----------------------------------\n" ++ showVal ctx et ) $ check ctx e et
   _ -> do 
     (r', t') <- infer ctx r
     if conv (evalCtx ctx) t' t then 
       pure r'
     else 
       Left $ "Type mismatch. \n Expecting: " ++ showVal ctx t ++ "\n Actually: " ++ showVal ctx t' ++ "\n In term: " ++ showTerm ctx r' ++ "\nIn context: " ++ showCtx ctx
+
+checkSp :: Context -> Context -> [Raw] -> Telescope -> TCM [Term] 
+checkSp ctx t_ctx [] [] = pure []
+checkSp ctx t_ctx (r:rs) ((x, t):ts) = do
+  let tv = eval (evalCtx t_ctx) t
+  r' <- check ctx r tv
+  rs' <- checkSp ctx (pushVar x tv (eval (evalCtx ctx) r') t_ctx) rs ts
+  pure (r' : rs')
+checkSp ctx _ _ _ = error "checkSp: impossible"
