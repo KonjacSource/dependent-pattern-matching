@@ -1,6 +1,6 @@
 # dependent-pattern-matching
 
-依赖模式匹配和 Indexed Inductive Types 的最简单实现, 简单起见, 不考虑 elaboration. 对项的检查的部分高度参考 elaboration-zoo.
+依赖模式匹配和 Indexed Inductive Types 的最简单实现, 简单起见, 不考虑 elaboration 和 终止检查. 对项的检查的部分高度参考 elaboration-zoo.
 包含 elaboration 和终止检查的项目可以看 [ShiTT](https://github.com/KonjacSource/ShiTT).
 
 阅读之前, 读者需要了解以下内容,
@@ -20,11 +20,8 @@
   * 支持模式匹配的求值器, 基于 NBE.
 - TypeChecker [Done]
   * 项的双向类型检查, 没写 elaborator
-- FunctionChecker [TODO]
+- FunctionChecker [Todo]
   * 检查函数 [Done]
-  * 模式完全性检查 [TODO]
-
-- Printer [Done]
-- Parser [TODO]
+  * 模式完全性检查 [Todo]
 
 有一篇写的很烂的[文章](design_proof_assistant_net.pdf).
