@@ -28,6 +28,7 @@ library
       Context
       Definition
       Don'tWriteParser.Parser
+      Don'tWriteParser.Test
       Draft
       Evaluation
       FunctionChecker
@@ -69,6 +70,7 @@ library
       base >=4.7 && <5
     , containers
     , mtl >=2.0
+    , template-haskell
     , transformers
   default-language: Haskell2010
 
@@ -107,6 +109,7 @@ executable dependent-pattern-matching-exe
     , containers
     , dependent-pattern-matching
     , mtl >=2.0
+    , template-haskell
     , transformers
   default-language: Haskell2010
 
@@ -146,5 +149,6 @@ test-suite dependent-pattern-matching-test
     , containers
     , dependent-pattern-matching
     , mtl >=2.0
+    , template-haskell
     , transformers
   default-language: Haskell2010

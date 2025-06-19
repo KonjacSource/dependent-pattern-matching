@@ -66,12 +66,27 @@ instance Arity FuncDef where
     (c:_) -> arity c
 
 data RClause = RClause
-  { clausePatternsR :: [Pattern]
+  { clausePatternsR :: [RPattern]
   , clauseRhsR :: Raw
   }
+
+data RPattern = RPat Name [RPattern]
 
 data RFuncDef = RFuncDef
   { funcNameR :: Id
   , funcTypeR :: Raw -- ^ 函数的类型
   , funcClausesR :: [RClause]
-  }
+  }  
+
+type RTelescope = [(Name, Raw)]
+
+data RDataDef = RDataDef
+  { dataNameR :: Name
+  , dataIxR :: RTelescope
+  , dataConsR :: [(Name, Telescope, [Raw])]
+  } deriving Show 
+
+data RDef = RDefData RDataDef | RDefFunc RFuncDef
+
+type Program = [RDef]
+

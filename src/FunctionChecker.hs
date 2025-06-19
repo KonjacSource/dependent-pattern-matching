@@ -110,8 +110,10 @@ updateCtx ctx x v =
     (postenv, xval_old:prenv) = splitAt x' env
     (postyp, xty:pretyp) = splitAt x' typ
 
+    -- 只更换了 x 的值的语境.
     env1 = postenv ++ v : prenv 
 
+    -- 用上面那个语境去更新能被他影响到的语境.
     refresh es tys []     [] = (es, tys)
     refresh es tys (v:vs) ((x,t):ts) =
       -- trace "---------------------------------------------------------------------" $
@@ -156,8 +158,17 @@ checkPat _ _ _ = Left "too much patterns."
 checkArity :: FuncDef -> TCM () 
 checkArity _ = pure () -- TODO 
 
+elabPattern :: Defs -> RPattern -> Pattern 
+elabPattern defs (RPat x ps) = case ps of 
+  [] -> -- maybe var or con
+    case M.lookup x defs of 
+      Just (DefCons _) -> PatCon x []
+      _ | x /= "_" -> PatVar x
+        | otherwise -> error "not support yet."
+  _ -> PatCon x (elabPattern defs <$> ps) -- must be con
+
 checkCls :: HasCallStack => Context -> Id -> Type -> RClause -> TCM Clause
-checkCls ctx func_name func_typ (RClause ps rhs) = do
+checkCls ctx func_name func_typ (RClause (map (elabPattern (defs ctx)) -> ps) rhs) = do
   -- trace "I'm checking clause" $ pure ()
   let func_typ' = eval (evalCtx ctx) func_typ
   (ctx', rhs_ty) <- checkPat ctx ps func_typ'
@@ -179,7 +190,9 @@ checkFunc1 ctx (RFuncDef func_name func_typ cls) = do
 
 checkFunc ::  Context -> RFuncDef -> TCM FuncDef
 checkFunc ctx rfun = do 
-  fun <- checkFunc1 ctx rfun 
+  prefun <- checkFunc1 ctx (rfun {funcClausesR = []})
+  -- this allowing recursion.
+  fun <- checkFunc1 (ctx {defs = M.insert (funcNameR rfun) (DefFunc prefun) (defs ctx)}) rfun 
   checkArity fun 
   -- TODO : Check Coverage.
   pure fun

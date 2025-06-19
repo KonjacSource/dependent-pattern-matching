@@ -24,6 +24,7 @@ dependencies:
 - transformers 
 - containers 
 - mtl >= 2.0
+- template-haskell
 
 ghc-options:
 - -Wall

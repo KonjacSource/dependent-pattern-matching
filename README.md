@@ -9,7 +9,7 @@
 - 基本 Haskell 语法
 - 对依赖模式匹配有基本的直觉 (或者你熟悉 GADT 也行)
 
-阅读顺序:
+主要模块的阅读顺序:
 - Syntax [Done]
   * 基本语法, 项的定义
 - Definition [Done]

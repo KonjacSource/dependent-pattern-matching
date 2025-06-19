@@ -46,7 +46,7 @@ match _ _ _ = error "impossible"
 
 -- | Make sure `(length sp) <= arity f`
 evalFun :: EvalCtx -> FuncDef -> [Clause] -> Spine -> Value
-evalFun ctx@(def, env) f [] sp = error "evalFun: impossible, maybe something wrong in coverage checker."
+evalFun ctx@(def, env) f [] sp = VFunc f sp -- No matchable clause yet.
 evalFun ctx@(def, env) f (c:cs) sp
   | length sp < arity f = VFunc f sp -- Wait
   | otherwise = -- `length sp == arity f`

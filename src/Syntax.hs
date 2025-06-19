@@ -41,6 +41,7 @@ data Raw
   -- ^ evaluate 时输出
   | RPrintCtx Raw
   -- ^ 类型检查时输出
+  deriving Show 
   
 infixl 7 `App`
 infixl 7 `RApp`

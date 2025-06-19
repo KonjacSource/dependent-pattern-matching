@@ -1,11 +1,18 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE NoImplicitPrelude #-} 
+{-# OPTIONS_GHC -ddump-splices #-}
+
 module Draft where
 
+import Prelude hiding ((/))
 import Syntax 
 import Definition
 import Context
 import Evaluation
 import qualified Data.Map as M
 import FunctionChecker
+import Don'tWriteParser.Parser 
+
 
 -- Definitions and Context 
 ----------------------------
@@ -87,7 +94,7 @@ symDefR = RFuncDef
       RVar "Id" `RApp` RVar "tA" `RApp` RVar "ty" `RApp` RVar "tx"
   , funcClausesR = 
     [ RClause 
-      { clausePatternsR = [PatVar "A", PatVar "x", PatVar "y", PatCon "refl" [PatVar "A'", PatVar "x'"]] 
+      { clausePatternsR = [RPat "A" [], RPat "x" [], RPat "y" [], RPat "refl" [RPat "A'" [], RPat "x'" []]] 
       , clauseRhsR = RVar "refl" `RApp` RVar "A" `RApp` RVar "x"
       }
     ] 
@@ -98,6 +105,16 @@ symDef = case checkFunc (Context [] [] testDefs) symDefR of
   Right f -> f 
   Left m -> error m
 
+congDefR :: RFuncDef
+congDefR = $(parseFunc =<< [| 
+    def cong : (A : U) (B : U) (x : A) (y : A) (f : A --> B) (_ : Id A x y) --> Id B (f x) (f y) 
+    / A B x y f (refl A x1) := refl B (f y)
+  |])
+
+congDef = case checkFunc (Context [] [] testDefs) congDefR of 
+  Right f -> f 
+  Left m -> error m 
+
 testDefs :: Defs
 testDefs = M.fromList 
   [ ("Nat", DefData natDef)
@@ -106,9 +123,8 @@ testDefs = M.fromList
   , ("add", DefFunc addDef) 
   , ("Id", DefData idDef)
   , ("refl", DefCons reflDef)
+  , ("cong", DefFunc congDef)
   ]
-
-
 -- Evaluator
 ----------------
 

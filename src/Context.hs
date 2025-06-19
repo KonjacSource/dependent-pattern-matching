@@ -69,5 +69,7 @@ deriving instance Show Clause
 deriving instance Show Pattern
 deriving instance Show Value
 deriving instance Show Closure
-
+deriving instance Show RFuncDef
+deriving instance Show RClause
+deriving instance Show RPattern
 
