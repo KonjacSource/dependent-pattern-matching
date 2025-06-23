@@ -30,6 +30,7 @@
 ## Example
 
 ```haskell
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoImplicitPrelude #-} 
 import Prelude hiding ((/))
 import Syntax 
@@ -91,5 +92,13 @@ testProg = checkProg M.empty $(parseProg =<< [|
         trans Nat (suc (add n m)) (suc (add m n)) (add m (suc n)) 
           (cong Nat Nat (add n m) (add m n) suc (addCom n m)) 
           (sym Nat (add m (suc n)) (suc (add m n)) (addSuc m n))
+    $
+
+    def J : (A : U) (P : (x : A) (y : A) --> Id A x y --> U) 
+          (m : (x : A) --> P x x (refl A x))
+          (a : A) (b : A) (p : Id A a b) --> P a b p
+    / A . P . m . a . b . refl A1 a1 := m a1
   |])
 ```
+
+Note. 使用 ``(do e)`` 来输出语境, 其中 ``(do e) = e`` 

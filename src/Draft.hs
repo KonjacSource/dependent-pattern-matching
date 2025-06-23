@@ -139,7 +139,7 @@ testProg = $(parseProg =<< [|
     $
 
     def trans : (A : U) (x : A) (y : A) (z : A) --> Id A x y --> Id A y z --> Id A x z
-    / A . x . y . z . (refl A1 x1) . (refl A2 y1) := refl A2 y1 
+    / A . x . y . z . (refl A1 x1) . (refl A2 y1) := (do refl A2 y1)
 
     $
 
@@ -173,6 +173,13 @@ testProg = $(parseProg =<< [|
         trans Nat (suc (add n m)) (suc (add m n)) (add m (suc n)) 
           (cong Nat Nat (add n m) (add m n) suc (addCom n m)) 
           (sym Nat (add m (suc n)) (suc (add m n)) (addSuc m n))
+    
+    $
+
+    def J : (A : U) (P : (x : A) (y : A) --> Id A x y --> U) 
+          (m : (x : A) --> P x x (refl A x))
+          (a : A) (b : A) (p : Id A a b) --> P a b p
+    / A . P . m . a . b . refl A1 a1 := m a1
   |])
 
 testDefs' :: TCM Defs

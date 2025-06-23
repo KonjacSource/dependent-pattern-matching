@@ -92,7 +92,10 @@ unifySp ctx flexet us vs ts = case (us, vs, ts) of
 updateVal :: Context -> Value -> Value
 updateVal ctx = eval (evalCtx ctx) . quote (defs ctx) (currentLvl (values ctx))
 
--- TODO: test
+freshVal :: Defs -> [Value] -> [Value] -> Value -> Value 
+freshVal def from to = eval (def, to) . quote def (currentLvl from)
+
+-- TODO: crucial part of unification, need fully test
 updateCtx :: Context -> Lvl -> Value -> Context
 updateCtx ctx x v = 
   -- trace ("I'm updating contex: " ++ showCtx ctx ++ "\n\n" ++ " with: " ++ show x ++ " := " ++ showVal ctx v) $ 
@@ -110,23 +113,25 @@ updateCtx ctx x v =
     (postenv, xval_old:prenv) = splitAt x' env
     (postyp, xty:pretyp) = splitAt x' typ
 
+    changeTail :: [a] -> [a] -> [a]
+    changeTail orig new = take (length orig - length new) orig ++ new
+
     -- 只更换了 x 的值的语境.
     env1 = postenv ++ v : prenv 
 
-    -- 用上面那个语境去更新能被他影响到的语境.
-    -- TODO : 这里只更改了后方的语境, 但实际上前方的语境也可能被影响, 所以这里需要对语境整体进行刷新
-    refresh es tys []     [] = (es, tys)
-    refresh es tys (v:vs) ((x,t):ts) =
-      -- trace "---------------------------------------------------------------------" $
-      -- trace ("doing " ++ x ++ " quote v = " ++ showTerm ctx (quote def (currentLvl env) v)) $
-      -- trace ("        eval v = " ++ showVal ctx (eval (def, env) (quote def (currentLvl env) v))) $
-      refresh (eval (def, env1) (quote def (currentLvl env) v):es) 
-              ((x, eval (def, env1) (quote def (currentLvl env) t)):tys) 
-              vs ts
-    refresh _ _ _ _ = error "refresh: impossible"
+    -- 用上面那个语境去更新被他影响到的语境.
+    -- 注意前方的语境也可能被影响, 所以这里需要对语境整体进行刷新.
+    -- 先前的版本只更新了后方的语境.
+    refresh :: [Value] -> [(Name, VType)] -> ([Value], [(Name, VType)]) 
+    refresh [] [] = ([], [])
+    refresh (v:es) ((x,t):tys) = 
+      let (es', tys') = refresh es tys 
+          env'' = changeTail env1 es' 
+      in (freshVal def env env'' v :es', (x, freshVal def env env'' t): tys')
+    refresh _ _ = error "refresh: impossible"
 
-    (env', typ') = refresh (v:prenv) (xty:pretyp) (reverse postenv) (reverse postyp)
-
+    (env', typ') = refresh env typ 
+    
 checkPat :: Context -> [Pattern] -> VType -> TCM (Context, VType)
 checkPat ctx [] ty = pure (ctx, ty)
 checkPat ctx (p:ps) (VPi x' a b) = 
