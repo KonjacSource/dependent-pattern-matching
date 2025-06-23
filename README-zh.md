@@ -1,38 +1,33 @@
 # dependent-pattern-matching
 
-[中文](README-zh.md)
+依赖模式匹配和 Indexed Inductive Types 的最简单实现, 简单起见, 不考虑元变量求解和终止检查. 对项的检查的部分高度参考 elaboration-zoo.
+包含元变量求解和终止检查的项目可以看 [ShiTT](https://github.com/KonjacSource/ShiTT).
 
-The simplest implementation of Dependent Pattern Matching and Indexed Inductive Types. For simplicity, metavariable solving and termination checking are not considered. The term checking part is highly inspired by elaboration-zoo. For a project that includes metavariable solving and termination checking, see [ShiTT](https://github.com/KonjacSource/ShiTT).
+阅读之前, 读者需要了解以下内容,
+- 基本的依值类型实现 (双向类型检查)
+- 了解 de Bruijn Index 和 Level, 以及基于此的求值
+- 基本 Haskell 语法
+- 对依赖模式匹配有基本的直觉 (或者你熟悉 GADT 也行)
 
-Before reading, you should be familiar with:
-
-- Basic implementation of dependent types (bidirectional type checking)
-- Understanding of de Bruijn Index and Level, and evaluation based on them
-- Basic Haskell syntax
-- An intuitive understanding of dependent pattern matching (or familiarity with GADTs)
-
-Recommended reading order of main modules:
-
+主要模块的阅读顺序:
 - Syntax [Done]
-  * Basic syntax and term definitions
+  * 基本语法, 项的定义
 - Definition [Done]
-  * Syntax for types and function definitions
+  * 类型, 函数定义的语法
 - Context [Done]
-  * Various context-related definitions and utilities
+  * 各种语境相关定义与工具
 - Evaluation [Done]
-  * Evaluator supporting pattern matching, based on NBE
+  * 支持模式匹配的求值器, 基于 NBE.
 - TypeChecker [Done]
-  * Bidirectional type checking for terms (elaborator not written)
-- FunctionChecker [Todo] This is the core of the project
-  * Function checking [Done]
-  * Pattern coverage checking [Todo]
-There is a shitty [paper](design_proof_assistant_net.pdf) about this program.
+  * 项的双向类型检查, 没写 elaborator
+- FunctionChecker [Todo]
+  这是本项目的核心
+  * 检查函数 [Done]
+  * 模式完全性检查 [Todo]
 
-Note. The comments of this project is basically in Chinese. You can directly ask questions in Issue, if you have any problem about code.
+有一篇写的很烂的[文章](design_proof_assistant_net.pdf).
 
 ## Example
-
-I wrote Template Haskell instead of a parser. XD
 
 ```haskell
 {-# LANGUAGE TemplateHaskell #-}
@@ -106,4 +101,4 @@ testProg = checkProg M.empty $(parseProg =<< [|
   |])
 ```
 
-Note. Use ``(do e)`` to print context during type checking, where ``(do e) = e`` .
+Note. 使用 ``(do e)`` 来输出语境, 其中 ``(do e) = e`` 
