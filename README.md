@@ -26,9 +26,10 @@ Recommended reading order of main modules:
 - FunctionChecker [Todo] This is the core of the project
   * Function checking [Done]
   * Pattern coverage checking [Todo]
+  
 There is a shitty [paper](design_proof_assistant_net.pdf) about this program.
 
-Note. The comments of this project is basically in Chinese. You can directly ask questions in Issue, if you have any problem about code.
+Note. The comments of this project is basically in Chinese. You can directly ask questions in Issues, if you have any problem about code.
 
 ## Example
 
