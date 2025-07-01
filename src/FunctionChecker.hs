@@ -59,32 +59,34 @@ x     | 2      | VVar 2
 以 sym 函数为例, 当我们模式匹配到 refl 的时候, de Bruijn 已经积累到了 2.
 -}
 
--- unify ctx flexet u v t = ctx'
--- 其中 ctx 是当前语境, flexet 是灵活变量集合, u 和 v 是我们试图 unify 的两个值, t 是它们的类型, ctx' 是 unify 之后的新语境, 
+-- unify ctx u v t = ctx'
+-- 其中 ctx 是当前语境, u 和 v 是我们试图 unify 的两个值, t 是它们的类型, ctx' 是 unify 之后的新语境, 
 -- 我们要更新被 unify 的变量之后的语境部分. 
--- 注意这里的 unify 没有对称性, 我们总是将 u 里的灵活变量赋值.
-unify :: Context -> [Lvl] -> Value -> Value -> VType -> TCM Context
-unify ctx flexet u v t = 
-  -- trace ("I'm unifying " ++ showVal ctx u ++ " with " ++ showVal ctx v ++ " against type: " ++ showVal ctx t)
+unify :: Context -> Value -> Value -> VType -> TCM Context
+unify ctx u v t = 
+  trace ("I'm unifying " ++ showVal ctx u ++ " with " ++ showVal ctx v ++ " against type: " ++ showVal ctx t)
   case (u, v) of
     (VVar x, v)
-      | x `elem` flexet && x `notElem` fv (defs ctx) (currentLvl (values ctx)) v ->
+      | x `notElem` fv (defs ctx) (currentLvl (values ctx)) v ->
+          pure $ updateCtx ctx x v
+    (v, VVar x)
+      | x `notElem` fv (defs ctx) (currentLvl (values ctx)) v ->
           pure $ updateCtx ctx x v
     (VCons c us, VCons c' vs)
       | consName c == consName c' ->
-          unifySp ctx flexet us vs $ eval (evalCtx ctx) (consType c)
+          unifySp ctx us vs $ eval (evalCtx ctx) (consType c)
     (u, v)
       | conv (evalCtx ctx) u v -> pure ctx
       | otherwise -> Left "Unable to unify"
 
-unifySp :: Context -> [Lvl] -> Spine -> Spine -> VType -> TCM Context
-unifySp ctx flexet us vs ts = case (us, vs, ts) of
+unifySp :: Context -> Spine -> Spine -> VType -> TCM Context
+unifySp ctx us vs ts = case (us, vs, ts) of
   ([], [], _) -> pure ctx
   (u:us, v:vs, VPi x t b) -> do
-    ctx' <- unify ctx flexet u v t
+    ctx' <- unify ctx u v t
     let u' = updateVal ctx' u
     -- trace ("before update: " ++ showVal ctx u ++ " after: " ++ showVal ctx' u') $ pure ()
-    unifySp ctx' flexet us vs (evalClosure (defs ctx) b u')
+    unifySp ctx' us vs (evalClosure (defs ctx) b u')
   _ -> 
     output ctx [us, vs, [ts]] $
     Left "unifySp: Unable to unify"
@@ -131,7 +133,7 @@ updateCtx ctx x v =
     refresh _ _ = error "refresh: impossible"
 
     (env', typ') = refresh env typ 
-    
+
 checkPat :: Context -> [Pattern] -> VType -> TCM (Context, VType)
 checkPat ctx [] ty = pure (ctx, ty)
 checkPat ctx (p:ps) (VPi x' a b) = 
@@ -153,7 +155,7 @@ checkPat ctx (p:ps) (VPi x' a b) =
           e -> Left $ "checkPat: impossible, expected a data type: " ++ showVal ctx e
         let d_type = eval (evalCtx ctx') (dataType d)
         -- trace ("Starting unification: " ++ ctxShow ctx' d_arg ++ " with " ++ ctxShow ctx' d_arg' ++ " against: " ++ ctxShow ctx' d_type) $ pure ()
-        ctx'' <- unifySp ctx' (fvSp (defs ctx') (currentLvl (values ctx')) d_arg) d_arg d_arg' d_type 
+        ctx'' <- unifySp ctx' d_arg d_arg' d_type 
         -- b_rest is using an old context in its closure, so we need to update it.
         -- So we have to refresh the context.
         -- Note. Here p2v start from the level of ctx, not ctx''.

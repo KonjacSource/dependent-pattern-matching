@@ -109,7 +109,7 @@ symDef = case checkFunc (Context [] [] testDefs) symDefR of
 congDefR :: RFuncDef
 congDefR = $(parseFunc =<< [| 
     def cong : (A : U) (B : U) (x : A) (y : A) (f : A --> B) (_ : Id A x y) --> Id B (f x) (f y) 
-    / A . B . x . y . f . (refl A x1) := refl B (f y)
+    / A . B . x . y . f . refl A x1 := refl B (f y)
   |])
 
 congDef = case checkFunc (Context [] [] testDefs) congDefR of 
@@ -129,17 +129,17 @@ testProg = $(parseProg =<< [|
     $
     
     def cong : (A : U) (B : U) (x : A) (y : A) (f : A --> B) --> Id A x y --> Id B (f x) (f y) 
-    / A . B . x . y . f . (refl A1 x1) := refl B (f y)
+    / A . B . x . y . f . refl A1 x1 := refl B (f y)
 
     $
 
     def sym : (A : U) (x : A) (y : A) --> Id A x y --> Id A y x 
-    / A . x . y . (refl A1 x1) := refl A1 x1
+    / A . x . y . refl A1 x1 := refl A1 x1
 
     $
 
     def trans : (A : U) (x : A) (y : A) (z : A) --> Id A x y --> Id A y z --> Id A x z
-    / A . x . y . z . (refl A1 x1) . (refl A2 y1) := (do refl A2 y1)
+    / A . x . y . z . refl A1 x1 . refl A2 y1 := do refl A1 y1
 
     $
 
@@ -180,6 +180,12 @@ testProg = $(parseProg =<< [|
           (m : (x : A) --> P x x (refl A x))
           (a : A) (b : A) (p : Id A a b) --> P a b p
     / A . P . m . a . b . refl A1 a1 := m a1
+
+    $
+
+    def retZero : (A : U) --> Id U A Nat --> A 
+    / A . refl U' A' := do zero
+
   |])
 
 testDefs' :: TCM Defs
