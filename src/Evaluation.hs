@@ -21,7 +21,7 @@ data MatchResult
   | MatchFailed    -- ^ c != c'
 
 -- | 注意, 虽然在这个项目中模式匹配总是发生在顶层, 
--- 但是我们可能会扩展这个系统, 加入模块, 或是句内 case 语句.
+-- 但是我们可能会扩展这个系统, 加入模块, 或是句内 match 语句.
 match1 :: EvalCtx -> Pattern -> Value -> MatchResult
 match1 ctx@(def, env) pat val = case (pat, val) of
   (PatVar x, v) -> MatchSuc (v : env)
