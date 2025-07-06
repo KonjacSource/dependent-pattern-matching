@@ -104,6 +104,24 @@ testProg = checkProg M.empty $(parseProg =<< [|
           (m : (x : A) --> P x x (refl A x))
           (a : A) (b : A) (p : Id A a b) --> P a b p
     / A . P . m . a . b . refl A1 a1 := m a1
+
+    $
+    
+    def retZero : (A : U) --> Id U A Nat --> A 
+    / A . refl U' A' := do zero
+
+    $
+
+    datatype Vec : (A : U) (n : Nat) --> U
+    / nil : (A : U) --> Vec A zero
+    / cons : (A : U) (n : Nat) (a : A) (as : Vec A n) --> Vec A (suc n)
+
+    $
+    
+    def append : (A : U) (n : Nat) (m : Nat) --> Vec A n --> Vec A m --> Vec A (add n m)
+    / A . n . m . nil A' . ys := ys
+    / A . n . m . cons A' n' x xs . ys := cons A (add n' m) x (append A n' m xs ys)
+
   |])
 ```
 
