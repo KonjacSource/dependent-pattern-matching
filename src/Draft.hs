@@ -197,6 +197,13 @@ testProg = $(parseProg =<< [|
     def append : (A : U) (n : Nat) (m : Nat) --> Vec A n --> Vec A m --> Vec A (add n m)
     / A . n . m . nil A' . ys := ys
     / A . n . m . cons A' n' x xs . ys := cons A (add n' m) x (append A n' m xs ys)
+
+  |])
+
+negativeTest :: TCM Defs 
+negativeTest = checkProg (case testDefs' of Right d -> d) $(parseProg =<< [|
+    def H : (A : U) (B : U) (f : A --> B) (g : A --> B) (x : A) (y : A) --> Id B (f x) (g y) --> Nat
+    / A . B . f . g . x . y . refl B' fx := (do zero)
   |])
 
 testDefs' :: TCM Defs

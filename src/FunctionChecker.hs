@@ -59,37 +59,45 @@ x     | 2      | VVar 2
 以 sym 函数为例, 当我们模式匹配到 refl 的时候, de Bruijn 已经积累到了 2.
 -}
 
+data UnifRes 
+  = UnifOk Context 
+  | UnifStuck  -- When Agda would say : I'm not sure if there should be a case for the constructor 
+  | UnifFail   -- Absurd pattern
+
 -- unify ctx u v t = ctx'
 -- 其中 ctx 是当前语境, u 和 v 是我们试图 unify 的两个值, t 是它们的类型, ctx' 是 unify 之后的新语境, 
 -- 我们要更新被 unify 的变量之后的语境部分. 
-unify :: Context -> Value -> Value -> VType -> TCM Context
+unify :: Context -> Value -> Value -> VType -> UnifRes
 unify ctx u v t = 
-  trace ("I'm unifying " ++ showVal ctx u ++ " with " ++ showVal ctx v ++ " against type: " ++ showVal ctx t)
+  -- trace ("I'm unifying " ++ showVal ctx u ++ " with " ++ showVal ctx v ++ " against type: " ++ showVal ctx t)
   case (u, v) of
     (VVar x, v)
       | x `notElem` fv (defs ctx) (currentLvl (values ctx)) v ->
-          pure $ updateCtx ctx x v
+          UnifOk $ updateCtx ctx x v
     (v, VVar x)
       | x `notElem` fv (defs ctx) (currentLvl (values ctx)) v ->
-          pure $ updateCtx ctx x v
+          UnifOk $ updateCtx ctx x v
     (VCons c us, VCons c' vs)
       | consName c == consName c' ->
           unifySp ctx us vs $ eval (evalCtx ctx) (consType c)
+      | otherwise -> UnifFail
     (u, v)
-      | conv (evalCtx ctx) u v -> pure ctx
-      | otherwise -> Left "Unable to unify"
+      | conv (evalCtx ctx) u v -> UnifOk ctx
+      | otherwise -> UnifStuck
 
-unifySp :: Context -> Spine -> Spine -> VType -> TCM Context
+unifySp :: Context -> Spine -> Spine -> VType -> UnifRes
 unifySp ctx us vs ts = case (us, vs, ts) of
-  ([], [], _) -> pure ctx
-  (u:us, v:vs, VPi x t b) -> do
-    ctx' <- unify ctx u v t
-    let u' = updateVal ctx' u
-    -- trace ("before update: " ++ showVal ctx u ++ " after: " ++ showVal ctx' u') $ pure ()
-    unifySp ctx' us vs (evalClosure (defs ctx) b u')
+  ([], [], _) -> UnifOk ctx
+  (u:us, v:vs, VPi x t b) -> 
+    case unify ctx (updateVal ctx u) (updateVal ctx v) t of 
+      UnifOk ctx' -> 
+        let u' = updateVal ctx' u in 
+        -- trace ("before update: " ++ showVal ctx u ++ " after: " ++ showVal ctx' u') $ 
+        unifySp ctx' us vs (evalClosure (defs ctx) b u')
+      e -> e
   _ -> 
     output ctx [us, vs, [ts]] $
-    Left "unifySp: Unable to unify"
+    error "impossible"
 
 updateVal :: Context -> Value -> Value
 updateVal ctx = eval (evalCtx ctx) . quote (defs ctx) (currentLvl (values ctx))
@@ -155,7 +163,10 @@ checkPat ctx (p:ps) (VPi x' a b) =
           e -> Left $ "checkPat: impossible, expected a data type: " ++ showVal ctx e
         let d_type = eval (evalCtx ctx') (dataType d)
         -- trace ("Starting unification: " ++ ctxShow ctx' d_arg ++ " with " ++ ctxShow ctx' d_arg' ++ " against: " ++ ctxShow ctx' d_type) $ pure ()
-        ctx'' <- unifySp ctx' d_arg d_arg' d_type 
+        ctx'' <- case unifySp ctx' d_arg d_arg' d_type of 
+          UnifOk c -> pure c 
+          UnifStuck -> Left "I'm not sure if there should be a case."
+          UnifFail -> Left "Impossible case."
         -- b_rest is using an old context in its closure, so we need to update it.
         -- So we have to refresh the context.
         -- Note. Here p2v start from the level of ctx, not ctx''.
