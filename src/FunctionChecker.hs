@@ -105,7 +105,6 @@ updateVal ctx = eval (evalCtx ctx) . quote (defs ctx) (currentLvl (values ctx))
 freshVal :: Defs -> [Value] -> [Value] -> Value -> Value 
 freshVal def from to = eval (def, to) . quote def (currentLvl from)
 
--- TODO: crucial part of unification, need fully test
 updateCtx :: Context -> Lvl -> Value -> Context
 updateCtx ctx x v = 
   -- trace ("I'm updating contex: " ++ showCtx ctx ++ "\n\n" ++ " with: " ++ show x ++ " := " ++ showVal ctx v) $ 
@@ -121,7 +120,6 @@ updateCtx ctx x v =
     def = defs ctx
     x' = toIx (currentLvl env) x
     (postenv, xval_old:prenv) = splitAt x' env
-    (postyp, xty:pretyp) = splitAt x' typ
 
     changeTail :: [a] -> [a] -> [a]
     changeTail orig new = take (length orig - length new) orig ++ new
@@ -177,12 +175,6 @@ checkPat ctx (p:ps) (VPi x' a b) =
         -- trace ("pattern = " ++ show p) $ pure ()
         -- trace ("p2v = " ++ show (p2v (defs ctx'') (currentLvl (values ctx)) p) ++ "\n\n") $ pure ()
         let b_rest_updated = eval (evalCtx ctx'') (quote (defs ctx'') (currentLvl (values ctx'')) b_rest)
-
-        ------------------------------------------------------
-        -- let Closure _ body = b
-        -- let b_rest = eval (defs ctx'', p2v (defs ctx'') (currentLvl (values ctx')) p : values ctx'') body
-        ------------------------------------------------------
-
         -- trace ("rest_type = " ++ showVal ctx'' b_rest_updated) $ pure ()
         checkPat ctx'' ps b_rest_updated 
       _ -> Left "Try to eliminate a nondatatype with constructor."
