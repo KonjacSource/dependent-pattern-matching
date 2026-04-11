@@ -25,8 +25,6 @@
   * 检查函数 [Done]
   * 模式完全性检查 [Todo]
 
-有一篇写的很烂的[文章](design_proof_assistant_net.pdf).
-
 ## Example
 
 我写 Template Haskell 是因为懒得写 parser.
